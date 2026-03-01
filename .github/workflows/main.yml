@@ -1,14 +1,15 @@
-name: Build & Release Hot Face Emoji
+name: Build Emoji
 
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
   build-emoji:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -18,50 +19,27 @@ jobs:
         with:
           node-version: 20
 
+      - name: Verify package.json exists
+        run: |
+          if [ ! -f ./package.json ]; then
+            echo "package.json not found in root. Check workflow path."
+            exit 1
+          fi
+
       - name: Install dependencies
         run: npm install
-        working-directory: ./   # ✅ project root, not package.json
+        working-directory: ./   # ✅ adjust if package.json is in a subfolder
 
-      - name: Validate assets
-        run: |
-          echo "Checking new 🥵 Hot Face assets..."
-          ls svg/U+1F975.svg
-          ls png/512/U+1F975.png
-
-      - name: Build Noto Emoji font
+      - name: Run build
         run: npm run build
+        working-directory: ./   # ✅ same folder as package.json
 
       - name: Run tests
         run: npm test
+        working-directory: ./
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: hot-face-fonts
-          path: build/fonts/*
-
-  release:
-    needs: build-emoji
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: hot-face-fonts
-          path: release/fonts
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v0.7
-          name: "Hot Face Emoji Update"
-          body: |
-            🥵 Hot Face emoji updated to new design:
-            - Tongue out
-            - Sweat drop
-            - Wide eyes
-          files: release/fonts/*
+          name: build-output
+          path: ./dist
